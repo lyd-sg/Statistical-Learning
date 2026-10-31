@@ -1,0 +1,7 @@
+# Generated evidence is reproducible from the executed notebook.
+outputs/
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+.venv/
+venv/
