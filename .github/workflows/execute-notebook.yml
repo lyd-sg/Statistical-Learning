@@ -50,13 +50,14 @@ jobs:
           mv online_shoppers_analysis_executed.ipynb online_shoppers_analysis.ipynb
       - name: Verify executed notebook and analysis values
         run: |
+          git fetch --depth=1 origin main:refs/remotes/origin/main
           python - <<'PY'
           import nbformat, pathlib, re
           import pandas as pd
           nb = nbformat.read('online_shoppers_analysis.ipynb', as_version=4)
           nbformat.validate(nb)
           code = [cell for cell in nb.cells if cell.cell_type == 'code']
-          assert len(code) == 33
+          assert len(code) == 35
           assert all(isinstance(cell.execution_count, int) for cell in code)
           assert not any(output.output_type == 'error' for cell in code for output in cell.outputs)
           source = '\n'.join(cell.source for cell in nb.cells)
@@ -64,6 +65,12 @@ jobs:
           assert 'data/online_shoppers.csv' in source
           assert 'T_STAR=C_FP/(C_FP+C_FN)' in source
           assert 'ALL_FINALISTS_AT_T' in source
+          assert '### 3.2 Positive activity intensity' in source
+          assert '### 3.4 Within-class predictor correlations' in source
+          assert '### 3.6 SpecialDay and purchase behaviour' in source
+          assert '### EDA-to-experiment bridge' not in source
+          assert '## 3. Categorical EDA' not in source
+          assert '## 4. Predictor relationships and assumptions' not in source
           assert len(pd.read_csv('data/online_shoppers.csv')) == 12330
 
           summary = '\n'.join(output.text for output in code[-1].outputs
@@ -83,6 +90,20 @@ jobs:
           assert len(finalist_cell) == 1
           finalist_text = ''.join(o.get('text', '') for o in finalist_cell[0].outputs if o.output_type == 'stream')
           assert 'cheapest finalist is' in finalist_text, finalist_text
+
+          # Guardrail. All model code from the first shared-source model cell onward
+          # must remain identical to the group main branch before this EDA patch.
+          # On main, this is an identity check; on the review branch it detects
+          # accidental edits to any of the newer AP/cost/model logic.
+          import json, subprocess
+          old = json.loads(subprocess.check_output(
+              ['git','show','origin/main:online_shoppers_analysis.ipynb'],text=True))
+          old_cells = old['cells']
+          anchor = 'd3121f8a'
+          start = next(i for i,c in enumerate(old_cells) if c.get('id')==anchor)
+          expected = {c['id']: ''.join(c['source']) for c in old_cells[start:] if c['cell_type']=='code'}
+          actual = {c['id']: ''.join(c['source']) for c in nb.cells if c.cell_type=='code'}
+          assert all(actual.get(cid)==src for cid,src in expected.items()), 'Downstream group model code changed'
 
           for family, marker in [('Logit','L'),('LDA','D'),('GaussianNB','G'),('BernoulliNB','B')]:
               found = [cell for cell in code if f"display_family('{family}')" in cell.source]
