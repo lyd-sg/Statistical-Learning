@@ -118,8 +118,8 @@ jobs:
                   "state='Baseline' if initial else ('Accepted' if record['accepted'] else 'Rejected')",
                   "state='baseline' if initial else ('accepted' if record['accepted'] else 'not retained')")
               source=source.replace(
-                  'notes.append(f"- **{alias} — {state}, retained {visible_survivor}**\n\n  {EDA_NOTES.get(original,record[\'single_change\'])}")',
-                  'notes.append(f"- **{alias} — {state}; retained {visible_survivor}.** {EDA_NOTES.get(original,record[\'single_change\'])}")')
+                  r"""notes.append(f"- **{alias} — {state}, retained {visible_survivor}**\n\n  {EDA_NOTES.get(original,record['single_change'])}")""",
+                  r"""notes.append(f"- **{alias} — {state}; retained {visible_survivor}.** {EDA_NOTES.get(original,record['single_change'])}")""")
               source=source.replace(
                   '**Iteration notes — EDA evidence and specification reasoning**',
                   '**Iteration notes, EDA and course rationale**')
