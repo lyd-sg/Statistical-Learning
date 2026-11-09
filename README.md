@@ -10,8 +10,8 @@ flowchart TD
     B["All-17 diagnostic models and 16-input operational baselines"]
     C["EDA-driven transformations: 4 classifier families × 7 displayed models"]
     D["Full vs pruned Gini and Entropy classification trees"]
-    E["Compare six finalists using training CV ROC-AUC"]
-    F["Threshold illustrations, reserved-set check and all-data refit"]
+    E["Rank six finalists by training CV average precision (PR-AUC), check ROC-AUC"]
+    F["Pre-declared cost threshold on all finalists, reserved check and full-data refit"]
     A --> B --> C --> D --> E --> F
 ```
 
@@ -37,19 +37,19 @@ Open `online_shoppers_analysis.ipynb` and run all cells in order. The notebook r
 
 The initial diagnostic comparison uses all **17 original predictors**, followed by operational models built with **16 inputs**. `PageValues` is excluded from the operational models as a precaution because its availability at the intended intervention time is unverified; this does not, by itself, establish data leakage.
 
-Four classifier families are compared: Logistic Regression, linear discriminant analysis (LDA), Gaussian Naive Bayes and Bernoulli Naive Bayes. Each has seven consecutively labelled models in the main tables: **L0–L6, D0–D6, G0–G6, B0–B6** (**28 displayed**). Internally, the same sequential candidate evaluations are retained to reproduce the selection decisions (43 planned, 38 scored, five inapplicable). Both Gini and Entropy classification trees are evaluated before and after cost-complexity pruning.
+Four classifier families are compared: Logistic Regression, linear discriminant analysis (LDA), Gaussian Naive Bayes and Bernoulli Naive Bayes. Each has seven consecutively labelled models in the main tables: **L1–L7, D1–D7, G1–G7, B1–B7** (**28 displayed**). Internally, the same sequential candidate evaluations are retained to reproduce the selection decisions (43 planned, 38 scored, five inapplicable). Both Gini and Entropy classification trees are evaluated before and after cost-complexity pruning.
 
-Models use a shared **seed-42 stratified 80/20 split** (9,864 training / 2,466 previously inspected reserved observations) and **five training folds**. All preprocessing, feature transformations and inner tuning fit only on their relevant training folds. Within each classifier family, an exploratory sequential **one-SE complexity rule** compares a challenger against the current incumbent using mean five-fold CV ROC-AUC. Across the **six finalists**, the highest mean training CV ROC-AUC determines the winner; average precision (AP) is supplementary minority-class ranking information.
+Models use a shared **seed-42 stratified 80/20 split** (9,864 training / 2,466 previously inspected reserved observations) and **five training folds**. All preprocessing, feature transformations and inner tuning fit only on their relevant training folds. Within each classifier family, the exploratory sequential **one-SE complexity rule** compares each challenger with the current incumbent using mean five-fold CV **average precision (AP, PR-AUC)**. AP is also used for inner tuning, grouped backward LDA selection and tree cost-complexity pruning. Across the **six finalists**, the highest mean training CV AP determines the winner; ROC-AUC is reported as corroboration. Display IDs are presentation aliases; the original trial IDs and full historical selection path remain unchanged.
 
 ## Main results
 
-The six-way winner is **L5 Logistic Regression**: mean five-fold training **ROC-AUC 0.75892** and mean **AP 0.34236**. The runner-up is the pruned Entropy tree (ROC-AUC **0.74414**). The retained Bernoulli Naive Bayes model B6 has ROC-AUC **0.73953** and AP **0.30574**.
+The six-way winner is **L6 Logistic Regression** (original trial **L13**), with mean five-fold training **AP 0.34207** and **ROC-AUC 0.75096**. The second-ranked finalist by AP is the pruned Entropy tree (**AP 0.32105**, ROC-AUC 0.74397). Bernoulli Naive Bayes **B7** has AP 0.31406 and ROC-AUC 0.74402.
 
-The previously consulted reserved sample produces **ROC-AUC 0.74313** and **AP 0.33358**. These results are descriptive: the reserved set was examined during project development, so it is **not an untouched independent holdout**. The final selected recipe is also refitted on the full dataset.
+The previously consulted reserved sample produces **AP 0.32534** and **ROC-AUC 0.73804**. These results are descriptive: the reserved set was examined during project development, so it is **not an untouched independent holdout**. The final selected recipe is also refitted on the full dataset.
 
-The notebook explores four threshold reference points, including a hypothetical **0.20 contact threshold** derived from stated S$3 contact cost, S$50 gross margin and 30% conditional upsell-success assumptions. These assumptions are illustrative, not measured intervention effects. Neither ranking performance nor hypothetical cost illustrations establish calibrated probabilities, causal uplift or deployable profitability.
+The notebook pre-declares a hypothetical **0.20 contact threshold** from S$3 contact cost, S$50 gross margin and 30% conditional upsell-success assumptions, compares four references for the winner, and applies the same declared threshold to all six finalists. The pruned Entropy tree has the lowest hypothetical training-fold classification loss at that threshold; Logistic Regression still wins on the pre-declared AP criterion. These assumptions are illustrative, not measured intervention effects. Neither ranking performance nor hypothetical cost illustrations establish calibrated probabilities, causal uplift or deployable profitability.
 
-**For group review:** Confirm the primary ranking metric, justify `PageValues` timing, and decide whether the hypothetical decision-cost framing belongs in the final proposal. This is a **prediction** project rather than a causal-inference analysis.
+**For group review:** Explain the AP-first selection criterion, justify `PageValues` timing, and decide whether the hypothetical decision-cost framing belongs in the final proposal. This is a **prediction** project rather than a causal-inference analysis.
 
 ## Reproducibility
 
