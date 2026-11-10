@@ -57,7 +57,7 @@ jobs:
           nb = nbformat.read('online_shoppers_analysis.ipynb', as_version=4)
           nbformat.validate(nb)
           code = [cell for cell in nb.cells if cell.cell_type == 'code']
-          assert len(code) == 35
+          assert len(code) == 36
           assert all(isinstance(cell.execution_count, int) for cell in code)
           assert not any(output.output_type == 'error' for cell in code for output in cell.outputs)
           source = '\n'.join(cell.source for cell in nb.cells)
@@ -65,6 +65,9 @@ jobs:
           assert 'data/online_shoppers.csv' in source
           assert 'T_STAR=C_FP/(C_FP+C_FN)' in source
           assert 'ALL_FINALISTS_AT_T' in source
+          assert '### 2.3 Overall numerical predictor correlations' in source
+          assert 'CORR_FULL = Xtr[NUMERIC_ALL].corr(method="pearson")' in source
+          assert "colspan=\"2\"" in source
           assert '### 3.2 Positive activity intensity' in source
           assert '### 3.4 Within-class predictor correlations' in source
           assert '### 3.6 SpecialDay and purchase behaviour' in source
