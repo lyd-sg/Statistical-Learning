@@ -110,7 +110,7 @@ jobs:
 
           finalist_cell = [cell for cell in code if 'ALL_FINALISTS_AT_T=pd.DataFrame' in cell.source]
           assert len(finalist_cell) == 1
-          finalist_text = ''.join(o.get('text', '') for o in finalist_cell[0].outputs if o.output_type == 'stream')
+          finalist_text = plain_outputs(finalist_cell[0])
           assert 'Selected | EntropyTree' in finalist_text and '0.2' in finalist_text, finalist_text
 
           # Integrity guardrail: normalise approved explanation text and display aliases only.
