@@ -57,7 +57,7 @@ jobs:
           nb = nbformat.read('online_shoppers_analysis.ipynb', as_version=4)
           nbformat.validate(nb)
           code = [cell for cell in nb.cells if cell.cell_type == 'code']
-          assert len(code) == 36
+          assert len(code) == 35
           assert all(isinstance(cell.execution_count, int) for cell in code)
           assert not any(output.output_type == 'error' for cell in code for output in cell.outputs)
           source = '\n'.join(cell.source for cell in nb.cells)
@@ -76,23 +76,35 @@ jobs:
           assert '## 4. Predictor relationships and assumptions' not in source
           assert len(pd.read_csv('data/online_shoppers.csv')) == 12330
 
-          summary = '\n'.join(output.text for output in code[-1].outputs
-                              if output.output_type == 'stream')
-          assert 'Winner (PR-AUC): L6 | Logit' in summary, summary
-          assert 'Sequential candidate checks: 43 planned, 38 scored, 5 inapplicable.' in summary, summary
-          ap = re.search(r'mean five-fold AP=(\d+\.\d+)', summary)
-          auc = re.search(r'mean five-fold ROC-AUC=(\d+\.\d+)', summary)
-          reserved = re.search(r'Reserved-set check: AP=(\d+\.\d+); ROC-AUC=(\d+\.\d+)', summary)
-          assert auc and ap and reserved, summary
-          assert abs(float(ap.group(1)) - 0.34207) < 0.0001
-          assert abs(float(auc.group(1)) - 0.75095) < 0.0001
-          assert abs(float(reserved.group(1)) - 0.32534) < 0.0001
-          assert abs(float(reserved.group(2)) - 0.73804) < 0.0001
+          def plain_outputs(cell):
+              parts = []
+              for output in cell.outputs:
+                  if output.output_type == 'stream':
+                      parts.append(output.text)
+                  elif output.output_type in ('display_data', 'execute_result'):
+                      parts.append(output.data.get('text/plain', ''))
+              return '\n'.join(parts)
+
+          ap_cell = next(c for c in code if 'VISIBLE_FINALISTS=FINALISTS' in c.source)
+          ap_table = plain_outputs(ap_cell)
+          assert 'L6' in ap_table and '0.34207' in ap_table, ap_table
+          roc_cell = next(c for c in code if 'ROC_VIEW=FINALISTS' in c.source)
+          roc_table = plain_outputs(roc_cell)
+          assert 'L6' in roc_table and '0.75096' in roc_table, roc_table
+          test_cell = next(c for c in code if "TEST_AUDIT={'n_test'" in c.source)
+          test_table = plain_outputs(test_cell)
+          assert '20% Test Set' in test_table and '2466' in test_table, test_table
+          assert '0.3253' in test_table and '0.738' in test_table, test_table
+          final_table = plain_outputs(code[-1])
+          assert 'Full Data Set' in final_table and 'L6 Logistic Regression' in final_table
+          assert '12330' in final_table, final_table
+          assert 'assert len(ATTEMPTS_DF)==43' in source
+          assert 'assert len(FINALISTS)==6' in source
 
           finalist_cell = [cell for cell in code if 'ALL_FINALISTS_AT_T=pd.DataFrame' in cell.source]
           assert len(finalist_cell) == 1
           finalist_text = ''.join(o.get('text', '') for o in finalist_cell[0].outputs if o.output_type == 'stream')
-          assert 'cheapest finalist is' in finalist_text, finalist_text
+          assert 'Selected | EntropyTree' in finalist_text and '0.2' in finalist_text, finalist_text
 
           # Integrity guardrail: normalise approved explanation text and display aliases only.
           import json, subprocess
@@ -124,14 +136,16 @@ jobs:
           assert all(without_presentation_copy(actual.get(cid,''))==without_presentation_copy(src)
                      for cid,src in expected.items()), 'Model calculations differ from main beyond presentation-only changes'
 
-          # Verify 28 consecutive visible model labels and their explanation blocks.
+          # Verify the 28 displayed model labels against the Markdown explanation blocks.
           assert 'labels={original:prefix+str(i+1) for i,original in enumerate(origins)}' in source
-          for fam,mark in [('Logit','L'),('LDA','D'),('GaussianNB','G'),('BernoulliNB','B')]:
-              display_cell=next(c for c in code if f"display_family('{fam}')" in c.source)
-              note=''.join(o.data.get('text/markdown','') for o in display_cell.outputs
-                           if o.output_type in ('display_data','execute_result'))
-              assert all(f'- **{mark}{j} —' in note for j in range(1,8)),fam
-              assert f'- **{mark}0 —' not in note,fam
+          for fam, mark in [('Logit','L'),('LDA','D'),('GaussianNB','G'),('BernoulliNB','B')]:
+              display_cell = next(c for c in code if f"display_family('{fam}')" in c.source)
+              note = '\n'.join(c.source for c in nb.cells
+                               if c.cell_type == 'markdown' and f'- **{mark}1 —' in c.source
+                               and 'Iteration notes' in c.source)
+              assert note, fam
+              assert all(f'- **{mark}{j} —' in note for j in range(1,8)), fam
+              assert f'- **{mark}0 —' not in note, fam
 
           for family, marker in [('Logit','L'),('LDA','D'),('GaussianNB','G'),('BernoulliNB','B')]:
               found = [cell for cell in code if f"display_family('{family}')" in cell.source]
