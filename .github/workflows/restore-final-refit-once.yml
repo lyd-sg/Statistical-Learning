@@ -62,7 +62,7 @@ jobs:
           updated = json.loads(original_path.read_text(encoding='utf-8'))
           for index,(a,b) in enumerate(zip(updated['cells'],executed['cells'])):
               if index != i:
-                  assert a['source'] == b['source']
+                  assert ''.join(a['source']) == ''.join(b['source'])
           print('PASS: all 35 notebook code cells executed successfully in prior run.')
           print('PASS: restored only final refit output; earlier graphs/outputs unchanged.')
           print(output_text[:4000])
