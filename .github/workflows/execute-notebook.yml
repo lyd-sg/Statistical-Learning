@@ -96,8 +96,15 @@ jobs:
           assert '20% Test Set' in test_table and '2466' in test_table, test_table
           assert '0.3253' in test_table and '0.738' in test_table, test_table
           final_table = plain_outputs(code[-1])
-          assert 'Full Data Set' in final_table and 'L6 Logistic Regression' in final_table
-          assert '12330' in final_table, final_table
+          assert 'L6 Logistic Regression' in final_table, final_table
+          assert '12330' in final_table and 'Completed' in final_table, final_table
+          assert 'Source predictors' in final_table, final_table
+          assert 'Preprocessing' in final_table, final_table
+          assert 'CV-selected C (frozen)' in final_table, final_table
+          assert 'Operating threshold' in final_table, final_table
+          final_source = code[-1].source
+          assert 'FINAL_PIPELINE=clone(TRAIN_SELECTED_SPEC)' in final_source
+          assert 'assert not isinstance(FINAL_PIPELINE,GridSearchCV)' in final_source
           assert 'assert len(ATTEMPTS_DF)==43' in source
           assert 'assert len(FINALISTS)==6' in source
 
@@ -159,8 +166,8 @@ jobs:
                 '43 planned trials / 38 scored; L6 displayed as AP winner; CV and reserved scores match; '
                 't* applied to every finalist.')
           PY
-      - name: Save executed notebook to review branch
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/analysis/')
+      - name: Save executed notebook to source branch
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/analysis/'))
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
